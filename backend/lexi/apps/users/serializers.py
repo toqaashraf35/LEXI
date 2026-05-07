@@ -2,6 +2,7 @@ from rest_framework import serializers
 from datetime import date
 import re
 from .models import User
+from django.core.validators import RegexValidator
 
 class SignupSerializer(serializers.ModelSerializer):
 
@@ -68,3 +69,28 @@ class SignupSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(errors)
 
         return data
+    
+class GoogleAuthSerializer(serializers.Serializer):
+    id_token = serializers.CharField(required=True)
+
+class CompleteProfileSerializer(serializers.Serializer):
+    birth_date = serializers.DateField(required=True)
+    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    gender = serializers.ChoiceField(
+        choices=['male', 'female'],
+        required=False,
+        allow_null=True
+    )
+
+    def validate_birth_date(self, value):
+        today = date.today()
+        age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+        if age < 18:
+            raise serializers.ValidationError("User must be at least 18 years old")
+        return value
+
+    def validate_phone(self, value):
+        if value:
+            validator = RegexValidator(r'^01[0125][0-9]{8}$', "Invalid Egyptian phone number")
+            validator(value)
+        return value

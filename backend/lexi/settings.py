@@ -2,7 +2,6 @@ from pathlib import Path
 import dj_database_url
 from dotenv import load_dotenv
 import os
-from datetime import timedelta
 
 load_dotenv()
 
@@ -24,8 +23,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'lexi.apps.users',
 ]
+SITE_ID = 1
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'

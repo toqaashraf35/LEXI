@@ -11,6 +11,7 @@ def create_user(validated_data):
         gender=validated_data.get("gender"),
         is_active=False,
         is_verified=False,
+        profile_completed=True,
     )
 
     user.set_password(validated_data["password"])
@@ -24,5 +25,19 @@ def create_user(validated_data):
     )
 
     send_verification_email(user.email, code)
+
+    return user
+
+def create_google_user(user_data):
+    user = User.objects.create(
+        email=user_data["email"],
+        full_name=user_data["full_name"],
+        is_active=False,
+        is_verified=True,
+        is_google_user=True,
+        profile_completed=False,
+    )
+    user.set_unusable_password()
+    user.save()
 
     return user
