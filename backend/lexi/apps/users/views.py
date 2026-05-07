@@ -1,253 +1,375 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import AllowAny
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import IsAuthenticated
-from django.contrib.auth import get_user_model
 from datetime import date
-from .models import User, EmailVerification
-from .serializers import GoogleAuthSerializer, CompleteProfileSerializer, SignupSerializer, LoginSerializer
-from .services.google_service import verify_google_token
-from .services.auth_service import create_user, create_google_user
-from .services.utils import get_first_error
-from .services.email_service import resend_verification_code
+from django.contrib.auth import get_user_model
+from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from .serializers import (
+    CompleteProfileSerializer,
+    ForgotPasswordSerializer,
+    GoogleAuthSerializer,
+    LoginSerializer,
+    ResetPasswordSerializer,
+    SignupSerializer,
+    VerifyResetCodeSerializer,
+)
+from .services.auth_service import (
+    create_google_user,
+    create_user,
+    resend_verification_code,
+)
+from .services.google_service import (
+    verify_google_token,
+)
+from .services.password_service import (
+    create_reset_password_code,
+    reset_user_password,
+    verify_reset_password_code,
+)
+from .services.profile_service import (
+    complete_profile,
+)
+from .services.utils import (
+    error_response,
+    get_first_error,
+    success_response,
+)
+from .services.verification_service import (
+    activate_user,
+    verify_email_code,
+)
+
+User = get_user_model()
 
 class SignupView(APIView):
 
-    def post(self, request):
-        serializer = SignupSerializer(data=request.data)
-
-        if not serializer.is_valid():
-            return Response({
-                "status": "error",
-                "message": get_first_error(serializer.errors),
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        user = create_user(serializer.validated_data)
-
-        return Response({
-            "status": "success",
-            "message": "User created successfully. Please verify your email.",
-            "data": {
-                "email": user.email,
-                "full_name": user.full_name
-            }
-        }, status=status.HTTP_201_CREATED)
-    
-User = get_user_model()
-class VerifyEmailView(APIView):
-
-    def post(self, request):
-        email = request.data.get('email')
-        code = request.data.get('code')
-
-        if not email or not code:
-            return Response({
-                "status": "error",
-                "message": "Email and code are required",
-                "errors": ["email and code are required"]
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({
-                "status": "error",
-                "message": "User not found",
-                "errors": ["invalid email"]
-            }, status=status.HTTP_404_NOT_FOUND)
-
-        verification = EmailVerification.objects.filter(
-            user=user,
-            is_used=False
-        ).order_by('-created_at').first()
-
-        if not verification:
-            return Response({
-                "status": "error",
-                "message": "No verification code found",
-                "errors": ["request new code"]
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        if verification.code != code:
-            return Response({
-                "status": "error",
-                "message": "Invalid verification code",
-                "errors": ["wrong code"]
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        if verification.is_expired():
-            return Response({
-                "status": "error",
-                "message": "Code expired",
-                "errors": ["expired code"]
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        user.is_active = True
-        user.is_verified = True
-        user.save()
-
-        verification.is_used = True
-        verification.save()
-
-        return Response({
-            "status": "success",
-            "message": "Email verified successfully",
-            "data": {
-                "user_id": user.id,
-                "email": user.email
-            }
-        }, status=status.HTTP_200_OK)
-
-class ResendVerificationCodeView(APIView):
-
-    def post(self, request):
-        email = request.data.get("email")
-
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({
-                "status": "error",
-                "message": "User not found"
-            }, status=status.HTTP_404_NOT_FOUND)
-
-        if user.is_verified:
-            return Response({
-                "status": "error",
-                "message": "User already verified"
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        resend_verification_code(user)
-
-        return Response({
-            "status": "success",
-            "message": "Verification code resent successfully",
-            "data": {
-                "user_id": user.id,
-                "email": user.email
-            }
-        }, status=status.HTTP_200_OK)
-
-class LoginView(APIView):
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-
-        if serializer.is_valid():
-            user = serializer.validated_data['user']
-
-            refresh = RefreshToken.for_user(user)
-
-            return Response({
-                "status": "success",
-                "message": "Login successful",
-                "data": {
-                    "user_id": user.id,
-                    "email": user.email,
-                    "profile_completed": user.profile_completed,
-                    "token": str(refresh.access_token),
-                    "refresh": str(refresh)
-                }
-            }, status=status.HTTP_200_OK)
-        
-        return Response({
-            "status": "error",
-            "message": get_first_error(serializer.errors)
-        }, status=status.HTTP_400_BAD_REQUEST) 
-    
-class GoogleAuthView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+
+        serializer = SignupSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return error_response(
+                get_first_error(serializer.errors),
+                serializer.errors
+            )
+
+        user = create_user(serializer.validated_data)
+
+        return success_response(
+            "User created successfully. Please verify your email.",
+            {
+                "email": user.email,
+                "full_name": user.full_name
+            },
+            status.HTTP_201_CREATED
+        )
+
+class VerifyEmailView(APIView):
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+
+        email = request.data.get("email")
+        code = request.data.get("code")
+
+        if not email or not code:
+            return error_response(
+                "Email and code are required"
+            )
+
+        try:
+            user = User.objects.get(email=email)
+
+        except User.DoesNotExist:
+            return error_response(
+                "User not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            verification = verify_email_code(user, code)
+
+        except ValueError as e:
+            return error_response(str(e))
+
+        activate_user(user, verification)
+
+        return success_response(
+            "Email verified successfully",
+            {
+                "user_id": user.id,
+                "email": user.email
+            }
+        )
+
+class ResendVerificationCodeView(APIView):
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+
+        email = request.data.get("email")
+
+        if not email:
+            return error_response(
+                "Email is required"
+            )
+
+        try:
+            user = User.objects.get(email=email)
+
+        except User.DoesNotExist:
+            return error_response(
+                "User not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        if user.is_verified:
+            return error_response(
+                "User already verified"
+            )
+
+        resend_verification_code(user)
+
+        return success_response(
+            "Verification code resent successfully",
+            {
+                "user_id": user.id,
+                "email": user.email
+            }
+        )
+
+class LoginView(APIView):
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+
+        serializer = LoginSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return error_response(
+                get_first_error(serializer.errors),
+                serializer.errors
+            )
+
+        user = serializer.validated_data["user"]
+
+        refresh = RefreshToken.for_user(user)
+
+        return success_response(
+            "Login successful",
+            {
+                "user_id": user.id,
+                "email": user.email,
+                "full_name": user.full_name,
+                "profile_completed": user.profile_completed,
+                "token": str(refresh.access_token),
+                "refresh": str(refresh)
+            }
+        )
+
+class GoogleAuthView(APIView):
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+
         serializer = GoogleAuthSerializer(data=request.data)
 
         if not serializer.is_valid():
-            return Response({
-                "status": "error",
-                "message": get_first_error(),
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return error_response(
+                get_first_error(serializer.errors),
+                serializer.errors
+            )
 
-        token = serializer.validated_data['id_token']
+        token = serializer.validated_data["id_token"]
 
         try:
             user_info = verify_google_token(token)
-        except ValueError as e:
-            return Response({
-                "status": "error",
-                "message": str(e)
-            }, status=status.HTTP_401_UNAUTHORIZED)
 
-        email = user_info['email']
-        full_name = user_info['full_name']
+        except ValueError as e:
+            return error_response(
+                str(e),
+                status_code=status.HTTP_401_UNAUTHORIZED
+            )
+
+        email = user_info["email"]
 
         user = User.objects.filter(email=email).first()
 
         if not user:
             user = create_google_user(user_info)
-        else:
-            if not user.is_verified:
-                user.is_verified = True
-                user.save()
+
+        elif not user.is_verified:
+            user.is_verified = True
+            user.save()
+
         refresh = RefreshToken.for_user(user)
 
-        return Response({
-            "status": "success",
-            "message": "Login successful",
-            "data": {
+        return success_response(
+            "Login successful",
+            {
                 "user_id": user.id,
                 "email": user.email,
                 "full_name": user.full_name,
-                "profile_completed": user.profile_completed, 
+                "profile_completed": user.profile_completed,
                 "token": str(refresh.access_token),
                 "refresh": str(refresh)
             }
-        }, status=status.HTTP_200_OK)
-    
+        )
+
 class CompleteProfileView(APIView):
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+
         user = request.user
 
-        if user.is_profile_completed:
-            return Response({
-                "status": "error",
-                "message": "Profile already completed"
-            }, status=status.HTTP_400_BAD_REQUEST)
+        if user.profile_completed:
+            return error_response(
+                "Profile already completed"
+            )
 
-        serializer = CompleteProfileSerializer(data=request.data)
+        serializer = CompleteProfileSerializer(
+            data=request.data
+        )
+
         if not serializer.is_valid():
-            return Response({
-                "status": "error",
-                "message": get_first_error(serializer.errors),
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return error_response(
+                get_first_error(serializer.errors),
+                serializer.errors
+            )
 
-        birth_date = serializer.validated_data['birth_date']
+        complete_profile(
+            user,
+            serializer.validated_data
+        )
 
-        today = date.today()
-        age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+        return success_response(
+            "Profile completed successfully"
+        )
 
-        if age < 18:
-            user.is_active = False
-            user.save()
-            return Response({
-                "status": "error",
-                "message": "User must be at least 18 years old"
-            }, status=status.HTTP_400_BAD_REQUEST)
+class ForgotPasswordView(APIView):
 
-        # Save profile data
-        user.birth_date = birth_date
-        user.phone = serializer.validated_data.get('phone') or user.phone
-        user.gender = serializer.validated_data.get('gender') or user.gender
-        user.is_profile_completed = True
-        user.is_active = True
-        user.save()
+    permission_classes = [AllowAny]
 
-        return Response({
-            "status": "success",
-            "message": "Profile completed successfully"
-        }, status=status.HTTP_200_OK)
+    def post(self, request):
+
+        serializer = ForgotPasswordSerializer(
+            data=request.data
+        )
+
+        if not serializer.is_valid():
+            return error_response(
+                get_first_error(serializer.errors),
+                serializer.errors
+            )
+
+        email = serializer.validated_data["email"]
+
+        try:
+            user = User.objects.get(email=email)
+
+        except User.DoesNotExist:
+            return error_response(
+                "User not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        if not user.has_usable_password():
+            return error_response(
+                "This account uses Google Sign-In"
+            )
+
+        create_reset_password_code(user)
+
+        return success_response(
+            "Password reset code sent successfully"
+        )
+
+class VerifyResetCodeView(APIView):
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+
+        serializer = VerifyResetCodeSerializer(
+            data=request.data
+        )
+
+        if not serializer.is_valid():
+            return error_response(
+                get_first_error(serializer.errors),
+                serializer.errors
+            )
+
+        email = serializer.validated_data["email"]
+        code = serializer.validated_data["code"]
+
+        try:
+            user = User.objects.get(email=email)
+
+        except User.DoesNotExist:
+            return error_response(
+                "User not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            verify_reset_password_code(user, code)
+
+        except ValueError as e:
+            return error_response(str(e))
+
+        return success_response(
+            "Code verified successfully"
+        )
+
+class ResetPasswordView(APIView):
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+
+        serializer = ResetPasswordSerializer(
+            data=request.data
+        )
+
+        if not serializer.is_valid():
+            return error_response(
+                get_first_error(serializer.errors),
+                serializer.errors
+            )
+
+        email = serializer.validated_data["email"]
+        code = serializer.validated_data["code"]
+        new_password = serializer.validated_data["new_password"]
+
+        try:
+            user = User.objects.get(email=email)
+
+        except User.DoesNotExist:
+            return error_response(
+                "User not found",
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            reset_user_password(
+                user,
+                code,
+                new_password
+            )
+
+        except ValueError as e:
+            return error_response(str(e))
+
+        return success_response(
+            "Password reset successfully"
+        )
