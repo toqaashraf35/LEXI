@@ -2,7 +2,6 @@ from ..models import User, EmailVerification
 from .utils import generate_verification_code
 from .email_service import send_verification_email
 
-
 def create_user(validated_data):
     user = User.objects.create(
         full_name=validated_data["full_name"],

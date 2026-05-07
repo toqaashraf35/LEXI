@@ -5,6 +5,7 @@ from .serializers import SignupSerializer
 from .services.auth_service import create_user
 from django.contrib.auth import get_user_model
 from .models import EmailVerification
+from .services.email_service import resend_verification_code
 class SignupView(APIView):
 
     def post(self, request):
@@ -28,7 +29,6 @@ class SignupView(APIView):
             }
         }, status=status.HTTP_201_CREATED)
     
-
 User = get_user_model()
 class VerifyEmailView(APIView):
 
@@ -92,4 +92,30 @@ class VerifyEmailView(APIView):
                 "user_id": user.id,
                 "email": user.email
             }
+        }, status=status.HTTP_200_OK)
+
+class ResendVerificationCodeView(APIView):
+
+    def post(self, request):
+        email = request.data.get("email")
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({
+                "status": "error",
+                "message": "User not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        if user.is_verified:
+            return Response({
+                "status": "error",
+                "message": "User already verified"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        resend_verification_code(user)
+
+        return Response({
+            "status": "success",
+            "message": "Verification code resent successfully"
         }, status=status.HTTP_200_OK)
