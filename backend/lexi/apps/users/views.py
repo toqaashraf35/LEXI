@@ -7,7 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from datetime import date
 from .models import User, EmailVerification
-from .serializers import GoogleAuthSerializer, CompleteProfileSerializer, SignupSerializer
+from .serializers import GoogleAuthSerializer, CompleteProfileSerializer, SignupSerializer, LoginSerializer
 from .services.google_service import verify_google_token
 from .services.auth_service import create_user, create_google_user
 from .services.utils import get_first_error
@@ -130,6 +130,32 @@ class ResendVerificationCodeView(APIView):
                 "email": user.email
             }
         }, status=status.HTTP_200_OK)
+
+class LoginView(APIView):
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+
+            refresh = RefreshToken.for_user(user)
+
+            return Response({
+                "status": "success",
+                "message": "Login successful",
+                "data": {
+                    "user_id": user.id,
+                    "email": user.email,
+                    "profile_completed": user.profile_completed,
+                    "token": str(refresh.access_token),
+                    "refresh": str(refresh)
+                }
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            "status": "error",
+            "message": get_first_error(serializer.errors)
+        }, status=status.HTTP_400_BAD_REQUEST) 
     
 class GoogleAuthView(APIView):
     permission_classes = [AllowAny]
@@ -174,7 +200,7 @@ class GoogleAuthView(APIView):
                 "user_id": user.id,
                 "email": user.email,
                 "full_name": user.full_name,
-                "profile_completed": user.profile_completed,  # ← NEW
+                "profile_completed": user.profile_completed, 
                 "token": str(refresh.access_token),
                 "refresh": str(refresh)
             }
