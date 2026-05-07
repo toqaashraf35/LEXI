@@ -1,5 +1,14 @@
 from django.urls import path
-from .views import SignupView, VerifyEmailView, ResendVerificationCodeView, GoogleAuthView, CompleteProfileView, LoginView
+from .views import (
+    SignupView, 
+    VerifyEmailView, 
+    ResendVerificationCodeView, 
+    GoogleAuthView, 
+    CompleteProfileView, 
+    LoginView,
+    ForgotPasswordView,
+    ResetPasswordView,
+    VerifyResetCodeView)
 
 urlpatterns = [
     path("auth/signup/", SignupView.as_view()),
@@ -7,5 +16,8 @@ urlpatterns = [
     path("auth/resend-verification-code/", ResendVerificationCodeView.as_view()),
     path('auth/google/', GoogleAuthView.as_view()),
     path('auth/login/', LoginView.as_view()),
+    path('auth/forgot-password/', ForgotPasswordView.as_view()),       
+    path('auth/verify-reset-code/', VerifyResetCodeView.as_view()),
+    path('auth/reset-password/', ResetPasswordView.as_view()),
     path('profile/complete/', CompleteProfileView.as_view()),
 ]

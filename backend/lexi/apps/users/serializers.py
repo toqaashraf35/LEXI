@@ -91,27 +91,83 @@ class LoginSerializer(serializers.Serializer):
 
         data['user'] = user
         return data  
+
 class GoogleAuthSerializer(serializers.Serializer):
     id_token = serializers.CharField(required=True)
 
 class CompleteProfileSerializer(serializers.Serializer):
-    birth_date = serializers.DateField(required=True)
-    phone = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+    birthdate = serializers.DateField(required=True)
+
+    phone = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True
+    )
+
     gender = serializers.ChoiceField(
-        choices=['male', 'female'],
+        choices=["male", "female"],
         required=False,
         allow_null=True
     )
 
-    def validate_birth_date(self, value):
+    def validate_birthdate(self, value):
+
         today = date.today()
-        age = today.year - value.year - ((today.month, today.day) < (value.month, value.day))
+
+        age = today.year - value.year - (
+            (today.month, today.day) < (value.month, value.day)
+        )
+
         if age < 18:
-            raise serializers.ValidationError("User must be at least 18 years old")
+            raise serializers.ValidationError(
+                "User must be at least 18 years old"
+            )
+
         return value
 
     def validate_phone(self, value):
+
         if value:
-            validator = RegexValidator(r'^01[0125][0-9]{8}$', "Invalid Egyptian phone number")
+            validator = RegexValidator(
+                r'^01[0125][0-9]{8}$',
+                "Invalid Egyptian phone number"
+            )
+
             validator(value)
+
         return value
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("User not found")
+        return value
+
+class VerifyResetCodeSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    code = serializers.CharField(required=True, max_length=6)
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    code = serializers.CharField(required=True, max_length=6)
+    new_password = serializers.CharField(required=True, min_length=8)
+    confirm_password = serializers.CharField(required=True)
+
+    def validate_password(self, new_password):
+            if len(new_password) < 8:
+                raise serializers.ValidationError("Password must be at least 8 characters")
+
+            if not re.search(r"[A-Z]", new_password):
+                raise serializers.ValidationError("Password must contain uppercase letter")
+
+            if not re.search(r"[0-9]", new_password):
+                raise serializers.ValidationError("Password must contain a number")
+
+            return new_password
+    
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
+        return data
