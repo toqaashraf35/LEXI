@@ -69,7 +69,28 @@ class SignupSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(errors)
 
         return data
-    
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        email = data.get('email')
+        password = data.get('password')
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Invalid email or password")
+
+        if not user.check_password(password):
+            raise serializers.ValidationError("Invalid email or password")
+
+        if not user.is_active and not user.is_verified:
+            raise serializers.ValidationError("Email is not verified")
+
+        data['user'] = user
+        return data  
 class GoogleAuthSerializer(serializers.Serializer):
     id_token = serializers.CharField(required=True)
 

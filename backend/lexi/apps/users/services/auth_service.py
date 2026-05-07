@@ -32,7 +32,7 @@ def create_google_user(user_data):
     user = User.objects.create(
         email=user_data["email"],
         full_name=user_data["full_name"],
-        is_active=False,
+        is_active=True,
         is_verified=True,
         is_google_user=True,
         profile_completed=False,
