@@ -5,7 +5,7 @@ class IsProfileCompleted(BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        if not request.user.is_profile_completed:
+        if not request.user.profile_completed:
             raise PermissionDenied({
                 "status": "error",
                 "message": "Please complete your profile first"
