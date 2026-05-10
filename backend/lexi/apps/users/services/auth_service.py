@@ -21,11 +21,6 @@ def create_user(validated_data):
 
     code = generate_verification_code(user)
 
-    EmailVerification.objects.create(
-        user=user,
-        code=code
-    )
-
     send_verification_email(user.email, code)
 
     return user

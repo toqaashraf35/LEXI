@@ -224,21 +224,15 @@ class GoogleAuthView(APIView):
         )
 
 class CompleteProfileView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-
         user = request.user
 
         if user.profile_completed:
-            return error_response(
-                "Profile already completed"
-            )
+            return error_response("Profile already completed")
 
-        serializer = CompleteProfileSerializer(
-            data=request.data
-        )
+        serializer = CompleteProfileSerializer(data=request.data)
 
         if not serializer.is_valid():
             return error_response(
@@ -246,14 +240,12 @@ class CompleteProfileView(APIView):
                 serializer.errors
             )
 
-        complete_profile(
-            user,
-            serializer.validated_data
-        )
+        try:
+            complete_profile(user, serializer.validated_data)
+        except ValueError as e:
+            return error_response(str(e))
 
-        return success_response(
-            "Profile completed successfully"
-        )
+        return success_response("Profile completed successfully")
 
 class ForgotPasswordView(APIView):
 

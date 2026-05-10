@@ -4,7 +4,11 @@ from dotenv import load_dotenv
 import os
 from datetime import timedelta
 
-load_dotenv()
+# Define BASE_DIR first ← MOVE UP
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Then load .env
+load_dotenv(BASE_DIR / '.env', override=True)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -61,7 +65,7 @@ ROOT_URLCONF = 'lexi.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'lexi' / 'apps' / 'users' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -83,6 +87,12 @@ DATABASES = {
         conn_max_age=600,
         ssl_require=True
     )
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
 }
 
 # Password validation
