@@ -169,3 +169,64 @@ class ResetPasswordSerializer(serializers.Serializer):
         if data['new_password'] != data['confirm_password']:
             raise serializers.ValidationError({"confirm_password": "Passwords do not match"})
         return data
+
+class UserProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "full_name",
+            "email",
+            "phone",
+            "birthdate",
+            "gender",
+            "date_joined"
+        ]
+
+class UpdateProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = [
+            "full_name",
+            "phone",
+            "gender"
+        ]
+
+    def validate(self, data):
+
+        forbidden_fields = [
+            "email",
+            "birthdate"
+        ]
+
+        for field in forbidden_fields:
+
+            if field in self.initial_data:
+                raise serializers.ValidationError({
+                    field: f"{field} cannot be updated"
+                })
+
+        return data
+
+    def validate_phone(self, value):
+
+        if value:
+            pattern = r"^01[0-2,5][0-9]{8}$"
+
+            if not re.match(pattern, value):
+                raise serializers.ValidationError(
+                    "Invalid Egyptian phone number"
+                )
+
+        return value
+
+    def validate_gender(self, value):
+
+        if value and value not in ["male", "female"]:
+            raise serializers.ValidationError(
+                "Gender must be male or female"
+            )
+
+        return value

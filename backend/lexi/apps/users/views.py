@@ -13,6 +13,8 @@ from .serializers import (
     ResetPasswordSerializer,
     SignupSerializer,
     VerifyResetCodeSerializer,
+    UserProfileSerializer,
+    UpdateProfileSerializer
 )
 from .services.auth_service import (
     create_google_user,
@@ -29,6 +31,8 @@ from .services.password_service import (
 )
 from .services.profile_service import (
     complete_profile,
+    update_profile,
+    delete_profile
 )
 from .services.utils import (
     error_response,
@@ -39,6 +43,8 @@ from .services.verification_service import (
     activate_user,
     verify_email_code,
 )
+
+
 
 User = get_user_model()
 
@@ -364,4 +370,57 @@ class ResetPasswordView(APIView):
 
         return success_response(
             "Password reset successfully"
+        )
+    
+class MyProfileView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        serializer = UserProfileSerializer(request.user)
+
+        return success_response(
+            "Profile fetched successfully",
+            serializer.data
+        )
+
+class UpdateProfileView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+
+        serializer = UpdateProfileSerializer(
+            request.user,
+            data=request.data,
+            partial=True
+        )
+
+        if not serializer.is_valid():
+            return error_response(
+                get_first_error(serializer.errors),
+                serializer.errors
+            )
+
+        user = update_profile(
+            request.user,
+            serializer.validated_data
+        )
+
+        return success_response(
+            "Profile updated successfully",
+            UserProfileSerializer(user).data
+        )
+    
+class DeleteProfileView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+
+        delete_profile(request.user)
+
+        return success_response(
+            "Profile deleted successfully"
         )

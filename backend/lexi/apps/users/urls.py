@@ -8,7 +8,10 @@ from .views import (
     LoginView,
     ForgotPasswordView,
     ResetPasswordView,
-    VerifyResetCodeView)
+    VerifyResetCodeView,
+    MyProfileView,
+    UpdateProfileView,
+    DeleteProfileView)
 
 urlpatterns = [
     path("auth/signup/", SignupView.as_view()),
@@ -20,4 +23,7 @@ urlpatterns = [
     path('auth/verify-reset-code/', VerifyResetCodeView.as_view()),
     path('auth/reset-password/', ResetPasswordView.as_view()),
     path('profile/complete/', CompleteProfileView.as_view()),
+    path("profile/me/", MyProfileView.as_view()),
+    path("profile/update/", UpdateProfileView.as_view()),
+    path("profile/delete/", DeleteProfileView.as_view()),
 ]
