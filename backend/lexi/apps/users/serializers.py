@@ -135,6 +135,7 @@ class CompleteProfileSerializer(serializers.Serializer):
             validator(value)
 
         return value
+    
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
@@ -227,6 +228,40 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
         if value and value not in ["male", "female"]:
             raise serializers.ValidationError(
                 "Gender must be male or female"
+            )
+
+        return value
+
+class ChangePasswordSerializer(serializers.Serializer):
+
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+
+    def validate(self, data):
+
+        if data["new_password"] != data["confirm_password"]:
+            raise serializers.ValidationError({
+                "confirm_password": "Passwords do not match"
+            })
+
+        return data
+
+    def validate_new_password(self, value):
+
+        if len(value) < 8:
+            raise serializers.ValidationError(
+                "Password must be at least 8 characters"
+            )
+
+        if not re.search(r"[A-Z]", value):
+            raise serializers.ValidationError(
+                "Password must contain uppercase letter"
+            )
+
+        if not re.search(r"[0-9]", value):
+            raise serializers.ValidationError(
+                "Password must contain a number"
             )
 
         return value

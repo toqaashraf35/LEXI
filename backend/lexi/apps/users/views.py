@@ -14,7 +14,8 @@ from .serializers import (
     SignupSerializer,
     VerifyResetCodeSerializer,
     UserProfileSerializer,
-    UpdateProfileSerializer
+    UpdateProfileSerializer,
+    ChangePasswordSerializer
 )
 from .services.auth_service import (
     create_google_user,
@@ -28,6 +29,7 @@ from .services.password_service import (
     create_reset_password_code,
     reset_user_password,
     verify_reset_password_code,
+    change_password
 )
 from .services.profile_service import (
     complete_profile,
@@ -423,4 +425,34 @@ class DeleteProfileView(APIView):
 
         return success_response(
             "Profile deleted successfully"
+        )
+    
+class ChangePasswordView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        serializer = ChangePasswordSerializer(
+            data=request.data
+        )
+
+        if not serializer.is_valid():
+            return error_response(
+                get_first_error(serializer.errors),
+                serializer.errors
+            )
+
+        try:
+            change_password(
+                request.user,
+                serializer.validated_data["old_password"],
+                serializer.validated_data["new_password"]
+            )
+
+        except ValueError as e:
+            return error_response(str(e))
+
+        return success_response(
+            "Password changed successfully"
         )

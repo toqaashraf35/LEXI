@@ -24,7 +24,6 @@ def error_response(message, errors=None, status_code=400):
         "errors": errors
     }, status=status_code)
 
-
 def success_response(message, data=None, status_code=200):
     return Response({
         "status": "success",
