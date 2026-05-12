@@ -19,7 +19,6 @@ def verify_email_code(user, code):
 
     return verification
 
-
 def activate_user(user, verification):
 
     user.is_active = True

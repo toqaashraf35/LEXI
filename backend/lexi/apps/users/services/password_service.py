@@ -53,3 +53,11 @@ def reset_user_password(user, code, new_password):
 
     reset.is_used = True
     reset.save()
+
+def change_password(user, old_password, new_password):
+
+    if not user.check_password(old_password):
+        raise ValueError("Old password is incorrect")
+
+    user.set_password(new_password)
+    user.save()
