@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'lexi.apps.users',
+    'lexi.apps.contracts'
 ]
 SITE_ID = 1
 
