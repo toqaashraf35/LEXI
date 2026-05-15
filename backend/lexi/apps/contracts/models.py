@@ -3,7 +3,6 @@ from django.db import models
 class Contract(models.Model):
 
     name = models.CharField(max_length=255)
-
     content = models.TextField()
 
     def __str__(self):
@@ -11,12 +10,9 @@ class Contract(models.Model):
     
 class Field(models.Model):
 
-    key = models.CharField(
-        max_length=255,
-        unique=True
-    )
-
-    label = models.CharField(max_length=255)
+    label = models.CharField(max_length=255, unique=True)
+    key = models.CharField(max_length=255, null=True, blank=True)
+    field_type = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
         return self.label
@@ -28,12 +24,10 @@ class ContractField(models.Model):
         on_delete=models.CASCADE,
         related_name="contract_fields"
     )
-
     field = models.ForeignKey(
         Field,
         on_delete=models.CASCADE
     )
-
     required = models.BooleanField(default=True)
 
     def __str__(self):
