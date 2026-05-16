@@ -2,7 +2,6 @@ from datetime import date
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import (
@@ -36,11 +35,13 @@ from .services.profile_service import (
     update_profile,
     delete_profile
 )
-from .services.utils import (
-    error_response,
-    get_first_error,
+
+from lexi.common.responses import (
     success_response,
+    error_response,
+    get_first_error
 )
+
 from .services.verification_service import (
     activate_user,
     verify_email_code,
