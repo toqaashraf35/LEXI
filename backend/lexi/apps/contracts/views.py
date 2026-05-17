@@ -1,5 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from .services.pdf_service import (
+    create_contract_pdf
+)
+
+from .services.storage_service import (
+    upload_pdf
+)
 
 from .serializers import (
     ContractFieldSerializer,
@@ -10,16 +17,13 @@ from .services.contract_service import (
     get_contract_with_fields,
     get_contract_by_id
 )
-from .services.pdf_service import (
-    generate_contract_pdf
-)
+
 from .services.generation_service import (
     fill_contract_template
 )
 from lexi.common.responses import (
     success_response,
     error_response,
-    get_first_error
 )
 
 
@@ -53,7 +57,6 @@ class ContractDetailsView(APIView):
     
 class GenerateContractView(APIView):
 
-    permission_classes = [IsAuthenticated]
     def post(self, request):
 
         serializer = GenerateContractSerializer(
@@ -63,42 +66,40 @@ class GenerateContractView(APIView):
         if not serializer.is_valid():
 
             return error_response(
-                get_first_error(
-                    serializer.errors
-                ),
+                "بيانات غير صحيحة",
                 serializer.errors
             )
 
-        contract_id = serializer.validated_data[
-            "contract_id"
-        ]
+        contract = serializer.validated_data["contract"]
+        fields_data = serializer.validated_data["fields"]
 
-        inputs = serializer.validated_data[
-            "inputs"
-        ]
+        mapped_fields = {}
 
-        try:
+        for cf in contract.contract_fields.select_related("field"):
+            label = cf.field.label
+            key = cf.field.key
 
-            contract = get_contract_by_id(
-                contract_id
-            )
+            value = fields_data.get(key)
 
-        except ValueError as e:
+            if value is not None:
+                mapped_fields[label] = value
 
-            return error_response(str(e))
+        final_contract = fill_contract_template(
+        contract.content,
+        mapped_fields
+    )
 
-        final_content = fill_contract_template(
-            contract.content,
-            inputs
+        pdf_file = create_contract_pdf(
+            contract.name,
+            final_contract
         )
 
-        pdf_path = generate_contract_pdf(
-            final_content
-        )
+        pdf_url = upload_pdf(pdf_file)
 
         return success_response(
-            "Contract generated successfully",
+            "تم إنشاء العقد بنجاح",
             {
-                "pdf": pdf_path
+                "contract_name": contract.name,
+                "pdf_url": pdf_url
             }
         )

@@ -3,6 +3,7 @@ import dj_database_url
 from dotenv import load_dotenv
 import os
 from datetime import timedelta
+import cloudinary
 
 # Define BASE_DIR first ← MOVE UP
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -112,6 +113,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+)
 # Internationalization
 
 LANGUAGE_CODE = 'en-us'
