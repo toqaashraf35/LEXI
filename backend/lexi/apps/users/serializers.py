@@ -85,7 +85,9 @@ class LoginSerializer(serializers.Serializer):
 
         if not user.check_password(password):
             raise serializers.ValidationError("Invalid email or password")
-
+            
+        if not user.is_active and not user.is_verified:
+             raise serializers.ValidationError("Email is not verified")
 
         data['user'] = user
         return data  
