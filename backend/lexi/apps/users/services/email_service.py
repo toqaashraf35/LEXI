@@ -3,7 +3,6 @@ from django.template.loader import render_to_string
 from django.conf import settings
 
 def send_verification_email(email, code):
-
     html_content = render_to_string(
         "verify_email.html",
         {"code": code}
@@ -20,7 +19,6 @@ def send_verification_email(email, code):
     msg.send()
 
 def send_reset_password_email(email, code):
-
     html_content = render_to_string(
         "reset_password.html",
         {"code": code}

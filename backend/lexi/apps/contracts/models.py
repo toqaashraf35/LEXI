@@ -1,7 +1,6 @@
 from django.db import models
 
 class Contract(models.Model):
-
     name = models.CharField(max_length=255)
     content = models.TextField()
 
@@ -9,7 +8,6 @@ class Contract(models.Model):
         return self.name
     
 class Field(models.Model):
-
     label = models.CharField(max_length=255, unique=True)
     key = models.CharField(max_length=255, null=True, blank=True)
     field_type = models.CharField(max_length=100, null=True, blank=True)
@@ -18,7 +16,6 @@ class Field(models.Model):
         return self.label
     
 class ContractField(models.Model):
-
     contract = models.ForeignKey(
         Contract,
         on_delete=models.CASCADE,

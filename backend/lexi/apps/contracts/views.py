@@ -26,9 +26,7 @@ from lexi.common.responses import (
     error_response,
 )
 
-
 class ContractDetailsView(APIView):
-
     def get(self, request, contract_id):
 
         try:
@@ -51,12 +49,11 @@ class ContractDetailsView(APIView):
         }
 
         return success_response(
-            "Contract fetched successfully",
+            "تم جلب العقد بنجاح",
             data
         )
     
 class GenerateContractView(APIView):
-
     def post(self, request):
 
         serializer = GenerateContractSerializer(

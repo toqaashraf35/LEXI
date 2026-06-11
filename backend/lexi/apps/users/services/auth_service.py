@@ -40,7 +40,6 @@ def create_google_user(user_data):
     return user
 
 def resend_verification_code(user):
-
     EmailVerification.objects.filter(
         user=user,
         is_used=False

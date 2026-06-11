@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from .models import Contract, ContractField
 class ContractFieldSerializer(serializers.ModelSerializer):
-
     key = serializers.CharField(source="field.key")
     label = serializers.CharField(source="field.label")
     field_type = serializers.CharField(source="field.field_type")
@@ -18,7 +17,6 @@ class ContractFieldSerializer(serializers.ModelSerializer):
         ]
 
 class GenerateContractSerializer(serializers.Serializer):
-
     contract_id = serializers.IntegerField()
     fields = serializers.DictField()
 

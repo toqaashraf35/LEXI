@@ -1,10 +1,8 @@
 import cloudinary.uploader
 import uuid
 
-
 def upload_pdf(pdf_file):
     pdf_file.seek(0)
-
     result = cloudinary.uploader.upload(
         pdf_file,
         resource_type="raw",
