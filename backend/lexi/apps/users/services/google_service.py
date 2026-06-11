@@ -6,15 +6,17 @@ def verify_google_token(token):
     try:
         print("GOOGLE_CLIENT_ID:", settings.GOOGLE_CLIENT_ID)
 
-        
         idinfo = id_token.verify_oauth2_token(
             token,
             requests.Request(),
-            settings.GOOGLE_CLIENT_ID
+            audience=[
+                settings.GOOGLE_CLIENT_ID,
+                "407408718192.apps.googleusercontent.com"
+            ]
         )
 
         if not idinfo.get("email_verified"):
-            raise ValueError("Google email is not verified")
+            raise ValueError("لم يتم التحقق من بريد جوجل الإلكتروني")
 
         return {
             "email": idinfo["email"],

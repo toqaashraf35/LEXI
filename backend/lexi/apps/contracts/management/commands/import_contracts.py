@@ -2,8 +2,6 @@ import pandas as pd
 from django.core.management.base import BaseCommand
 from lexi.apps.contracts.models import Contract, Field, ContractField
 from lexi.apps.contracts.services.placeholder_service import extract_placeholders
-from lexi.apps.contracts.services.field_normalization import normalize
-
 class Command(BaseCommand):
     help = "Import contracts + build fields + relations"
 
@@ -26,8 +24,6 @@ class Command(BaseCommand):
             placeholders = extract_placeholders(content)
 
             for ph in set(placeholders):
-
-                ph = normalize(ph)
 
                 if not ph:
                     continue

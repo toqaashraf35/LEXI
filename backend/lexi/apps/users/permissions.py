@@ -8,6 +8,6 @@ class IsProfileCompleted(BasePermission):
         if not request.user.profile_completed:
             raise PermissionDenied({
                 "status": "error",
-                "message": "Please complete your profile first"
+                "message": "يرجى إكمال ملفك الشخصي أولاً"
             })
         return True

@@ -2,7 +2,6 @@ from datetime import date
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import (
@@ -36,11 +35,13 @@ from .services.profile_service import (
     update_profile,
     delete_profile
 )
-from .services.utils import (
-    error_response,
-    get_first_error,
+
+from lexi.common.responses import (
     success_response,
+    error_response,
+    get_first_error
 )
+
 from .services.verification_service import (
     activate_user,
     verify_email_code,
@@ -51,7 +52,6 @@ from .services.verification_service import (
 User = get_user_model()
 
 class SignupView(APIView):
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -67,7 +67,7 @@ class SignupView(APIView):
         user = create_user(serializer.validated_data)
 
         return success_response(
-            "User created successfully. Please verify your email.",
+            "تم إنشاء حسابك بنجاح. يرجى التحقق من بريدك الإلكتروني.",
             {
                 "email": user.email,
                 "full_name": user.full_name
@@ -76,7 +76,6 @@ class SignupView(APIView):
         )
 
 class VerifyEmailView(APIView):
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -86,7 +85,7 @@ class VerifyEmailView(APIView):
 
         if not email or not code:
             return error_response(
-                "Email and code are required"
+                "البريد الإلكتروني والرمز مطلوبان"
             )
 
         try:
@@ -94,7 +93,7 @@ class VerifyEmailView(APIView):
 
         except User.DoesNotExist:
             return error_response(
-                "User not found",
+                "لم يتم العثور على المستخدم",
                 status_code=status.HTTP_404_NOT_FOUND
             )
 
@@ -107,7 +106,7 @@ class VerifyEmailView(APIView):
         activate_user(user, verification)
 
         return success_response(
-            "Email verified successfully",
+            "تم التحقق من البريد الإلكتروني بنجاح",
             {
                 "user_id": user.id,
                 "email": user.email
@@ -115,7 +114,6 @@ class VerifyEmailView(APIView):
         )
 
 class ResendVerificationCodeView(APIView):
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -124,7 +122,7 @@ class ResendVerificationCodeView(APIView):
 
         if not email:
             return error_response(
-                "Email is required"
+                "البريد الإلكتروني مطلوب"
             )
 
         try:
@@ -132,19 +130,19 @@ class ResendVerificationCodeView(APIView):
 
         except User.DoesNotExist:
             return error_response(
-                "User not found",
+                "لم يتم العثور على المستخدم",
                 status_code=status.HTTP_404_NOT_FOUND
             )
 
         if user.is_verified:
             return error_response(
-                "User already verified"
+                "تم التحقق من المستخدم بالفعل"
             )
 
         resend_verification_code(user)
 
         return success_response(
-            "Verification code resent successfully",
+            "تم إعادة إرسال رمز التحقق بنجاح",
             {
                 "user_id": user.id,
                 "email": user.email
@@ -152,7 +150,6 @@ class ResendVerificationCodeView(APIView):
         )
 
 class LoginView(APIView):
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -170,7 +167,7 @@ class LoginView(APIView):
         refresh = RefreshToken.for_user(user)
 
         return success_response(
-            "Login successful",
+            "تم تسجيل الدخول بنجاح",
             {
                 "user_id": user.id,
                 "email": user.email,
@@ -182,7 +179,6 @@ class LoginView(APIView):
         )
 
 class GoogleAuthView(APIView):
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -208,10 +204,13 @@ class GoogleAuthView(APIView):
 
         email = user_info["email"]
 
+        is_new_user = False
+
         user = User.objects.filter(email=email).first()
 
         if not user:
             user = create_google_user(user_info)
+            is_new_user = True
 
         elif not user.is_verified:
             user.is_verified = True
@@ -219,15 +218,21 @@ class GoogleAuthView(APIView):
 
         refresh = RefreshToken.for_user(user)
 
+        message = "تم تسجيل الدخول بنجاح"
+
+        if is_new_user:
+            message = "تم تسجيل الدخول بنجاح، من فضلك أكمل ملفك الشخصي"
+
         return success_response(
-            "Login successful",
+            message,
             {
                 "user_id": user.id,
                 "email": user.email,
                 "full_name": user.full_name,
                 "profile_completed": user.profile_completed,
                 "token": str(refresh.access_token),
-                "refresh": str(refresh)
+                "refresh": str(refresh),
+                "is_new_user": is_new_user
             }
         )
 
@@ -238,7 +243,7 @@ class CompleteProfileView(APIView):
         user = request.user
 
         if user.profile_completed:
-            return error_response("Profile already completed")
+            return error_response("تم إكمال الملف الشخصي بالفعل")
 
         serializer = CompleteProfileSerializer(data=request.data)
 
@@ -253,10 +258,9 @@ class CompleteProfileView(APIView):
         except ValueError as e:
             return error_response(str(e))
 
-        return success_response("Profile completed successfully")
+        return success_response("تم إكمال الملف الشخصي بنجاح")
 
 class ForgotPasswordView(APIView):
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -278,23 +282,22 @@ class ForgotPasswordView(APIView):
 
         except User.DoesNotExist:
             return error_response(
-                "User not found",
+                "لم يتم العثور على المستخدم",
                 status_code=status.HTTP_404_NOT_FOUND
             )
 
         if not user.has_usable_password():
             return error_response(
-                "This account uses Google Sign-In"
+                "يستخدم هذا الحساب تسجيل الدخول عبر جوجل."
             )
 
         create_reset_password_code(user)
 
         return success_response(
-            "Password reset code sent successfully"
+            "تم إرسال رمز إعادة تعيين كلمة المرور بنجاح"
         )
 
 class VerifyResetCodeView(APIView):
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -317,7 +320,7 @@ class VerifyResetCodeView(APIView):
 
         except User.DoesNotExist:
             return error_response(
-                "User not found",
+                "لم يتم العثور على المستخدم",
                 status_code=status.HTTP_404_NOT_FOUND
             )
 
@@ -328,11 +331,10 @@ class VerifyResetCodeView(APIView):
             return error_response(str(e))
 
         return success_response(
-            "Code verified successfully"
+            "تم التحقق من الرمز بنجاح"
         )
 
 class ResetPasswordView(APIView):
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -356,7 +358,7 @@ class ResetPasswordView(APIView):
 
         except User.DoesNotExist:
             return error_response(
-                "User not found",
+                "لم يتم العثور على المستخدم",
                 status_code=status.HTTP_404_NOT_FOUND
             )
 
@@ -371,11 +373,10 @@ class ResetPasswordView(APIView):
             return error_response(str(e))
 
         return success_response(
-            "Password reset successfully"
+            "تمت إعادة تعيين كلمة المرور بنجاح"
         )
     
 class MyProfileView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -383,12 +384,11 @@ class MyProfileView(APIView):
         serializer = UserProfileSerializer(request.user)
 
         return success_response(
-            "Profile fetched successfully",
+            "تم جلب الملف الشخصي بنجاح",
             serializer.data
         )
 
 class UpdateProfileView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def patch(self, request):
@@ -411,12 +411,11 @@ class UpdateProfileView(APIView):
         )
 
         return success_response(
-            "Profile updated successfully",
+            "تم تحديث الملف الشخصي بنجاح",
             UserProfileSerializer(user).data
         )
     
 class DeleteProfileView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def delete(self, request):
@@ -424,11 +423,10 @@ class DeleteProfileView(APIView):
         delete_profile(request.user)
 
         return success_response(
-            "Profile deleted successfully"
+            "تم حذف الملف الشخصي بنجاح"
         )
     
 class ChangePasswordView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -454,5 +452,5 @@ class ChangePasswordView(APIView):
             return error_response(str(e))
 
         return success_response(
-            "Password changed successfully"
+            "تم تغيير كلمة المرور بنجاح"
         )

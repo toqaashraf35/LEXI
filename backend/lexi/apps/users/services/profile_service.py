@@ -11,7 +11,7 @@ def complete_profile(user, validated_data):
     if age < 18:
         user.is_active = False
         user.save()
-        raise ValueError("User must be at least 18 years old")
+        raise ValueError("يجب ألا يقل عمر المستخدم عن 18 عامًا")
 
     user.birthdate = birthdate
     user.phone = validated_data.get("phone") or user.phone
