@@ -140,10 +140,10 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("البريد الإلكتروني أو كلمة المرور غير صحيحة.")
 
         if not user.check_password(password):
-            raise serializers.ValidationError("البريد الإلكتروني أو كلمة المرور غير صحيحة.")
+            raise serializers.ValidationError("Invalid email or password")
             
         if not user.is_active and not user.is_verified:
-            raise serializers.ValidationError("البريد الإلكتروني غير موثق")
+             raise serializers.ValidationError("Email is not verified")
 
         data['user'] = user
         return data  
