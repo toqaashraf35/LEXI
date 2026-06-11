@@ -23,10 +23,5 @@ staticfiles/
 .DS_Store
 Thumbs.db
 
-# AI models 
-*.h5
-*.pt
-*.pkl
-
 # node
 node_modules/
