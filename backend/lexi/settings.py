@@ -11,8 +11,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Then load .env
 load_dotenv(BASE_DIR / '.env', override=True)
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-
 SECRET_KEY = 'django-insecure-eg93x(x*f=gz--w=6(@p0=ub236^qgz_l4=7k@8_!iu7!nw0sp'
 
 DEBUG = True
@@ -30,8 +28,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'lexi.apps.users',
-    'lexi.apps.contracts'
+    'lexi.apps.contracts',
+    'lexi.apps.training'
 ]
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 SITE_ID = 1
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
@@ -115,13 +116,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
     api_key=os.getenv("CLOUDINARY_API_KEY"),
     api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True
 )
-# Internationalization
 
 LANGUAGE_CODE = 'en-us'
 
