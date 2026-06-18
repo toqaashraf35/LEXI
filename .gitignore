@@ -25,3 +25,4 @@ Thumbs.db
 
 # node
 node_modules/
+"venv/" 

@@ -184,7 +184,6 @@ body_results = predict_video(path)
 
 print(body_results)
 
-!pip install groq
 
 from groq import Groq
 
