@@ -121,6 +121,13 @@ cloudinary.config(
     api_key=os.getenv("CLOUDINARY_API_KEY"),
     api_secret=os.getenv("CLOUDINARY_API_SECRET"),
 )
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "contracts")
+
+ARABIC_FONT_DIR = r"C:\Users\Toqa Ashraf\Desktop\Graduation Project\lexiGP\backend\lexi\apps\contracts\services\fonts\NotoNaskhArabic-Regular.ttf"
+
 # Internationalization
 
 LANGUAGE_CODE = 'en-us'
