@@ -1,10 +1,12 @@
 def normalize_arabic_numbers(value):
-    arabic_numbers = "٠١٢٣٤٥٦٧٨٩"
+    if value is None:
+        return value
+
+    value = str(value)
+
     english_numbers = "0123456789"
+    arabic_numbers = "٠١٢٣٤٥٦٧٨٩"
 
-    translation_table = str.maketrans(
-        arabic_numbers,
-        english_numbers
-    )
+    table = str.maketrans(english_numbers, arabic_numbers)
 
-    return value.translate(translation_table)
+    return value.translate(table)
