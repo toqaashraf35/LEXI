@@ -24,7 +24,6 @@ class ContractListSerializer(serializers.ModelSerializer):
 
 ARABIC_TEXT_REGEX = re.compile(r"^[\u0600-\u06FF\s\-،.,()]+$")
 
-
 class GenerateContractSerializer(serializers.Serializer):
     contract_id = serializers.IntegerField()
     fields = serializers.DictField()
@@ -97,4 +96,8 @@ class ContractHistorySerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
+
+class ContractCategorySerializer(serializers.Serializer):
+    category = serializers.CharField()
+    contracts_count = serializers.IntegerField()
     

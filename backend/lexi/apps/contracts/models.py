@@ -20,9 +20,12 @@ class Field(models.Model):
         return f"{self.label} ({self.key})"
 
 class Contract(models.Model):
+    CATEGORY_CHOICES = [
+        
+    ]
     contract_name    = models.CharField(max_length=255)
     contract_content = models.TextField()
-
+    category         = models.CharField(max_length=100, blank=True, default="")
     def __str__(self):
         return self.contract_name
 

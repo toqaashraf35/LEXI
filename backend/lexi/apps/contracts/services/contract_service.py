@@ -1,4 +1,5 @@
 from ..models import Contract, ContractHistory
+from django.db.models import Count
 
 
 def get_contract_with_fields(contract_id):
@@ -10,7 +11,6 @@ def get_contract_with_fields(contract_id):
         raise ValueError("لم يتم العثور على العقد")
 
     return contract
-
 
 def get_all_contracts():
     return Contract.objects.all()
@@ -37,3 +37,19 @@ def delete_user_contract_history(user, history_id: int) -> bool:
 
     history.delete()
     return True
+
+def get_contract_categories():
+    return (
+        Contract.objects
+        .exclude(category__isnull=True)
+        .exclude(category="")
+        .values("category")
+        .annotate(contracts_count=Count("id"))
+        .order_by("category")
+    )
+
+
+def get_contracts_by_category(category):
+    return Contract.objects.filter(
+        category=category
+    ).order_by("contract_name")

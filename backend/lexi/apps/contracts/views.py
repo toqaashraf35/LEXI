@@ -1,5 +1,5 @@
 from rest_framework.views import APIView
-from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import redirect
 
 from .services.contract_service import (
@@ -7,15 +7,18 @@ from .services.contract_service import (
     get_all_contracts,
     get_user_contract_history,
     get_user_contract_history_by_id,
-    delete_user_contract_history
+    delete_user_contract_history,
+    get_contract_categories,
+    get_contracts_by_category
 )
-from .services.generation_service import generate_contract_pdf  # ← الـ orchestrator
+from .services.generation_service import generate_contract_pdf 
 
 from .serializers import (
     ContractFieldSerializer,
     GenerateContractSerializer,
     ContractListSerializer,
-    ContractHistorySerializer
+    ContractHistorySerializer,
+    ContractCategorySerializer
 )
 from lexi.common.responses import success_response, error_response
 
@@ -26,7 +29,6 @@ class ContractListView(APIView):
         contracts  = get_all_contracts()
         serializer = ContractListSerializer(contracts, many=True)
         return success_response("تم جلب العقود بنجاح", serializer.data)
-
 
 class ContractDetailsView(APIView):
 
@@ -47,7 +49,6 @@ class ContractDetailsView(APIView):
                 "fields": serializer.data,
             },
         )
-
 
 class GenerateContractView(APIView):
 
@@ -72,7 +73,6 @@ class GenerateContractView(APIView):
                 "pdf_url":       pdf_url,
             },
         )
-
 
 class ServeContractPDFView(APIView):
 
@@ -128,4 +128,36 @@ class ContractHistoryDeleteView(APIView):
         return success_response(
             message="تم حذف العقد بنجاح",
             data=None
+        )
+    
+class ContractCategoriesView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+
+        categories = get_contract_categories()
+
+        serializer = ContractCategorySerializer(
+            categories,
+            many=True
+        )
+
+        return success_response(
+            message="تم جلب التصنيفات بنجاح",
+            data=serializer.data
+        )
+    
+class ContractsByCategoryView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, category):
+
+        contracts = get_contracts_by_category(category)
+
+        serializer = ContractListSerializer(
+            contracts,
+            many=True
+        )
+
+        return success_response(
+            message="تم جلب العقود بنجاح",
+            data=serializer.data
         )
