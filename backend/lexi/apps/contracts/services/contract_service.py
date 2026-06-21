@@ -1,24 +1,55 @@
-from ..models import Contract
+from ..models import Contract, ContractHistory
+from django.db.models import Count
+
 
 def get_contract_with_fields(contract_id):
-    contract = Contract.objects.filter(id=contract_id).prefetch_related(
-        "contract_fields__field").first()
-
-    if not contract:
-        raise ValueError(
-            "لم يتم العثور على العقد"
-        )
-
-    return contract
-
-def get_contract_by_id(contract_id):
     contract = Contract.objects.filter(
         id=contract_id
-    ).first()
+    ).prefetch_related("contract_fields__field").first()
 
     if not contract:
-        raise ValueError(
-            "لم يتم العثور على العقد"
-        )
+        raise ValueError("لم يتم العثور على العقد")
 
     return contract
+
+def get_all_contracts():
+    return Contract.objects.all()
+
+def get_user_contract_history(user):
+    return ContractHistory.objects.filter(
+        user=user
+    ).order_by("-created_at")
+
+def get_user_contract_history_by_id(user, history_id: int):
+    try:
+        return ContractHistory.objects.get(
+            id=history_id,
+            user=user
+        )
+    except ContractHistory.DoesNotExist:
+        return None
+
+def delete_user_contract_history(user, history_id: int) -> bool:
+    history = get_user_contract_history_by_id(user, history_id)
+
+    if not history:
+        return False
+
+    history.delete()
+    return True
+
+def get_contract_categories():
+    return (
+        Contract.objects
+        .exclude(category__isnull=True)
+        .exclude(category="")
+        .values("category")
+        .annotate(contracts_count=Count("id"))
+        .order_by("category")
+    )
+
+
+def get_contracts_by_category(category):
+    return Contract.objects.filter(
+        category=category
+    ).order_by("contract_name")

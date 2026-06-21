@@ -1,54 +1,103 @@
 from rest_framework import serializers
-from .models import Contract, ContractField
+from .models import Contract, ContractField, ContractHistory
+import re
+
 class ContractFieldSerializer(serializers.ModelSerializer):
     key = serializers.CharField(source="field.key")
     label = serializers.CharField(source="field.label")
-    field_type = serializers.CharField(source="field.field_type")
+    type = serializers.CharField(source="field.type")
 
     class Meta:
-
         model = ContractField
-
         fields = [
             "key",
             "label",
-            "field_type",
-            "required"
+            "type",
+            "required",
+            "order"
         ]
+
+class ContractListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contract
+        fields = ["id", "contract_name"]
+
+ARABIC_TEXT_REGEX = re.compile(r"^[\u0600-\u06FF\s\-،.,()]+$")
 
 class GenerateContractSerializer(serializers.Serializer):
     contract_id = serializers.IntegerField()
     fields = serializers.DictField()
 
     def validate(self, data):
-
-        contract_id = data.get("contract_id")
-        fields = data.get("fields")
+        contract_id = data["contract_id"]
+        fields = data["fields"]
 
         try:
-            contract = Contract.objects.get(id=contract_id)
-
+            contract = Contract.objects.prefetch_related(
+                "contract_fields__field"
+            ).get(id=contract_id)
         except Contract.DoesNotExist:
             raise serializers.ValidationError({
                 "contract_id": "العقد غير موجود"
             })
 
-        required_fields = contract.contract_fields.filter(
-            required=True
-        )
+        required_fields_map = {
+            cf.field.key: {
+                "label": cf.field.label,
+                "field_type": getattr(cf.field, "field_type", "text")
+            }
+            for cf in contract.contract_fields.all()
+        }
 
-        errors = {}
+        missing = [
+            info["label"]
+            for key, info in required_fields_map.items()
+            if key not in fields or fields[key] in [None, ""]
+        ]
 
-        for contract_field in required_fields:
+        if missing:
+            raise serializers.ValidationError({
+                "fields": f"حقول ناقصة: {', '.join(missing)}"
+            })
 
-            key = contract_field.field.key
+        invalid_text_fields = []
 
-            if key not in fields or not str(fields[key]).strip():
-                errors[key] = f"{contract_field.field.label} مطلوب"
+        for key, value in fields.items():
 
-        if errors:
-            raise serializers.ValidationError(errors)
+            field_info = required_fields_map.get(key)
+            if not field_info:
+                continue
+
+            field_type = field_info["field_type"]
+
+            if field_type == "text":
+                if not isinstance(value, str) or not ARABIC_TEXT_REGEX.match(value):
+                    invalid_text_fields.append(field_info["label"])
+
+        if invalid_text_fields:
+            raise serializers.ValidationError({
+                "fields": f"يجب أن تكون الحقول التالية باللغة العربية فقط: {', '.join(invalid_text_fields)}"
+            })
 
         data["contract"] = contract
+        data["required_fields_map"] = required_fields_map
 
         return data
+    
+class ContractHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContractHistory
+        fields = [
+            "id",
+            "user",
+            "contract",
+            "contract_name",
+            "pdf_url",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
+
+class ContractCategorySerializer(serializers.Serializer):
+    category = serializers.CharField()
+    contracts_count = serializers.IntegerField()
+    
