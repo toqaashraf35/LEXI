@@ -114,3 +114,37 @@ class TrainingDetailView(APIView):
             "message": "تم جلب التحليل بنجاح",
             "data": serializer.data
         }, status=status.HTTP_200_OK)
+    
+class TrainingDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            analysis = TrainingAnalysis.objects.get(pk=pk, user=request.user)
+        except TrainingAnalysis.DoesNotExist:
+            return Response({
+                "status": "error",
+                "message": "التحليل غير موجود"
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        analysis.delete()
+
+        return Response({
+            "status": "success",
+            "message": "تم حذف التحليل بنجاح"
+        }, status=status.HTTP_200_OK)
+
+
+class TrainingDeleteAllView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        deleted_count, _ = TrainingAnalysis.objects.filter(
+            user=request.user
+        ).delete()
+
+        return Response({
+            "status": "success",
+            "message": "تم حذف جميع السجلات بنجاح",
+            "deleted_count": deleted_count
+        }, status=status.HTTP_200_OK)
