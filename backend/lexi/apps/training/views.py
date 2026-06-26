@@ -24,7 +24,15 @@ class TrainingAnalysisView(APIView):
                 "message": "يرجى رفع ملف الفيديو"
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        allowed_types = ["video/mp4", "video/avi", "video/mov", "video/mkv"]
+        allowed_types = [
+        "video/mp4",
+        "video/quicktime",   # .mov
+        "video/x-msvideo",   # .avi
+        "video/x-matroska",  # .mkv
+        "video/x-ms-wmv",    # .wmv
+        "video/webm",        # .webm
+        "video/x-flv",       # .flv
+        ]
         if video_file.content_type not in allowed_types:
             return Response({
                 "status": "error",

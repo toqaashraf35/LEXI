@@ -28,7 +28,7 @@ EMOTION_LABELS = [
     "emotional_confidence_label"
 ]
 
-# Initialize once — not inside the loop 
+# Initialize once — not inside the loop
 mp_pose = mp.solutions.pose
 detector = FER(mtcnn=True)
 
