@@ -29,7 +29,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'lexi.apps.users',
     'lexi.apps.contracts',
-    'lexi.apps.training'
+    'lexi.apps.training',
+    'lexi.apps.contract_analysis',
 ]
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 

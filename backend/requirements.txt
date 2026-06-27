@@ -19,7 +19,7 @@ fer==22.5.1
 moviepy==1.0.3
 librosa==0.10.2
 xgboost==2.1.4
-scikit-learn==1.3.2
+scikit-learn==1.6.1
 scipy==1.11.4
 pandas==2.1.4
 groq==0.9.0
@@ -42,3 +42,6 @@ PyJWT==2.12.1
 pypdf==6.13.3
 openpyxl==3.1.5
 whitenoise==6.12.0
+pymupdf==1.23.8
+pytesseract==0.3.10
+pdfplumber==0.11.10
