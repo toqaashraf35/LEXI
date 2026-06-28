@@ -29,13 +29,15 @@ INSTALLED_APPS = [
     'rest_framework',
     'lexi.apps.users',
     'lexi.apps.contracts',
-    'lexi.apps.training'
+    # 'lexi.apps.training',
+    'lexi.apps.chatbot'
 ]
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 SITE_ID = 1
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+AI_SERVICE_URL = os.getenv("AI_SERVICE_URL")
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'

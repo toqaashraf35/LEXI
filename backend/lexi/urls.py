@@ -5,5 +5,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('lexi.apps.users.urls')),
     path('contracts/', include('lexi.apps.contracts.urls')),
-    path('', include('lexi.apps.training.urls')),
+    # path('', include('lexi.apps.training.urls')),
+    path('chatbot/', include('lexi.apps.chatbot.urls'))
 ]
