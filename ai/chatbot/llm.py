@@ -1,9 +1,118 @@
+# from .config import client
+# from .retrieval import retrieve
+
+
+# def rewrite_query(question, history):
+
+#     if not history:
+#         return question
+
+#     history_text = "\n".join(
+#         f"{'المستخدم' if h['role']=='user' else 'المساعد'}: {h['content']}"
+#         for h in history[-4:]
+#     )
+
+#     prompt = f"""
+# بناءً على المحادثة السابقة، أعد صياغة السؤال الأخير ليكون سؤالًا مستقلًا.
+
+# المحادثة:
+
+# {history_text}
+
+# السؤال:
+
+# {question}
+
+# أعد كتابة السؤال فقط.
+# """
+
+#     try:
+#         response = client.chat.completions.create(
+#             model="openai/gpt-oss-120b",
+#             messages=[
+#                 {
+#                     "role": "user",
+#                     "content": prompt
+#                 }
+#             ]
+#         )
+#     except Exception as e:
+#         import traceback
+#         traceback.print_exc()
+#         raise
+#     return response.choices[0].message.content.strip()
+
+
+# def answer(question, history):
+
+#     standalone_question = rewrite_query(
+#         question,
+#         history
+#     )
+
+#     retrieved = retrieve(
+#         standalone_question
+#     )
+
+#     context = "\n\n".join(
+#         r["text"]
+#         for r in retrieved
+#     )
+
+#     prompt = f"""
+# أنت مساعد قانوني متخصص في محاكم الأسرة المصرية.
+
+# استخدم المعلومات فقط من السياق التالي:
+
+# {context}
+
+# السؤال:
+
+# {question}
+
+# أجب بالشكل التالي:
+
+# 📌 المشكلة
+
+# ⚖️ الإجراءات المطلوبة
+
+# 📄 المستندات المطلوبة
+
+# ⚠️ ملاحظات مهمة
+
+# إذا لم تجد معلومة كافية داخل السياق
+# قل:
+# لا توجد معلومات كافية.
+# """
+
+#     messages = [
+#         {
+#             "role": "system",
+#             "content": "أنت مساعد قانوني متخصص."
+#         }
+#     ]
+
+#     messages.extend(history[-4:])
+
+#     messages.append(
+#         {
+#             "role": "user",
+#             "content": prompt
+#         }
+#     )
+
+#     response = client.chat.completions.create(
+#         model="openai/gpt-oss-120b",
+#         messages=messages,
+#     )
+
+#     return response.choices[0].message.content
+
 from .config import client
 from .retrieval import retrieve
 
 
 def rewrite_query(question, history):
-
     if not history:
         return question
 
@@ -26,38 +135,18 @@ def rewrite_query(question, history):
 أعد كتابة السؤال فقط.
 """
 
-    try:
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-        )
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise
+    response = client.chat.completions.create(
+        model="openai/gpt-oss-120b",
+        messages=[{"role": "user", "content": prompt}]
+    )
     return response.choices[0].message.content.strip()
 
 
-def answer(question, history):
+def answer_stream(question, history):
+    standalone_question = rewrite_query(question, history)
+    retrieved = retrieve(standalone_question)
 
-    standalone_question = rewrite_query(
-        question,
-        history
-    )
-
-    retrieved = retrieve(
-        standalone_question
-    )
-
-    context = "\n\n".join(
-        r["text"]
-        for r in retrieved
-    )
+    context = "\n\n".join(r["text"] for r in retrieved)
 
     prompt = f"""
 أنت مساعد قانوني متخصص في محاكم الأسرة المصرية.
@@ -85,25 +174,17 @@ def answer(question, history):
 لا توجد معلومات كافية.
 """
 
-    messages = [
-        {
-            "role": "system",
-            "content": "أنت مساعد قانوني متخصص."
-        }
-    ]
-
+    messages = [{"role": "system", "content": "أنت مساعد قانوني متخصص."}]
     messages.extend(history[-4:])
+    messages.append({"role": "user", "content": prompt})
 
-    messages.append(
-        {
-            "role": "user",
-            "content": prompt
-        }
-    )
-
-    response = client.chat.completions.create(
+    stream = client.chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=messages,
+        stream=True,
     )
 
-    return response.choices[0].message.content
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta

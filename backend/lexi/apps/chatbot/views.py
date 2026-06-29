@@ -11,7 +11,7 @@ ConversationDetailSerializer,
 SendMessageSerializer,
 )
 
-from .services.chat_service import send_message
+from .services.chat_service import send_message_stream
 from lexi.common.responses import success_response
 
 class ConversationListCreateView(APIView):
@@ -88,22 +88,54 @@ class ConversationDetailView(APIView):
         )
 
 
+# class SendMessageView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def post(
+#         self,
+#         request,
+#         conversation_id
+#     ):
+
+#         serializer = SendMessageSerializer(
+#             data=request.data
+#         )
+
+#         serializer.is_valid(
+#             raise_exception=True
+#         )
+
+#         conversation = get_object_or_404(
+#             Conversation,
+#             id=conversation_id,
+#             user=request.user
+#         )
+
+#         question = serializer.validated_data[
+#             "question"
+#         ]
+
+#         answer = send_message(
+#             conversation,
+#             question
+#         )
+
+#         return success_response(
+#             message="تم إرسال الرسالة بنجاح.",
+#             data={
+#                 "answer": answer
+#             }
+#         )
+
+from django.http import StreamingHttpResponse
+import json
+
 class SendMessageView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(
-        self,
-        request,
-        conversation_id
-    ):
-
-        serializer = SendMessageSerializer(
-            data=request.data
-        )
-
-        serializer.is_valid(
-            raise_exception=True
-        )
+    def post(self, request, conversation_id):
+        serializer = SendMessageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
         conversation = get_object_or_404(
             Conversation,
@@ -111,18 +143,19 @@ class SendMessageView(APIView):
             user=request.user
         )
 
-        question = serializer.validated_data[
-            "question"
-        ]
+        question = serializer.validated_data["question"]
 
-        answer = send_message(
-            conversation,
-            question
-        )
+        def event_stream():
+            try:
+                for chunk in send_message_stream(conversation, question):
+                    yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
 
-        return success_response(
-            message="تم إرسال الرسالة بنجاح.",
-            data={
-                "answer": answer
-            }
+                yield f"data: {json.dumps({'done': True})}\n\n"
+
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+        return StreamingHttpResponse(
+            event_stream(),
+            content_type="text/event-stream",
         )
