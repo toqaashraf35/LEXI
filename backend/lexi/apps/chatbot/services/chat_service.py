@@ -24,25 +24,27 @@ def get_history(conversation):
 def generate_title(question):
     return question[:50]
 
+import json
 
-def generate_ai_response(question, history):
-
-    response = requests.post(
+def generate_ai_response_stream(question, history):
+    with requests.post(
         f"{settings.AI_SERVICE_URL}/chatbot/chat",
-        json={
-            "question": question,
-            "history": history
-        },
-        timeout=120
-    )
+        json={"question": question, "history": history},
+        stream=True,
+        timeout=120,
+    ) as response:
+        response.raise_for_status()
 
-    response.raise_for_status()
+        for line in response.iter_lines():
+            if line and line.startswith(b"data: "):
+                data = json.loads(line[6:])
+                if data.get("done"):
+                    return
+                if data.get("chunk"):
+                    yield data["chunk"]
 
-    return response.json()["answer"]
 
-
-def send_message(conversation, question):
-
+def send_message_stream(conversation, question):
     history = get_history(conversation)
 
     Message.objects.create(
@@ -51,19 +53,18 @@ def send_message(conversation, question):
         content=question
     )
 
-    ai_response = generate_ai_response(
-        question,
-        history
-    )
+    full_answer = ""
+
+    for chunk in generate_ai_response_stream(question, history):
+        full_answer += chunk
+        yield chunk
 
     Message.objects.create(
         conversation=conversation,
         role="assistant",
-        content=ai_response
+        content=full_answer
     )
 
     if not conversation.title:
         conversation.title = generate_title(question)
         conversation.save()
-
-    return ai_response
