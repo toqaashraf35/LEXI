@@ -14,7 +14,7 @@ def upload_contract(file_path: str, file_name: str) -> str:
         file_path,
         resource_type="auto",
         folder="lexi/contracts",
-        public_id=file_name.rsplit('.', 1)[0],  # filename without extension
+        public_id=file_name.rsplit('.', 1)[0],
         overwrite=False,
     )
 
