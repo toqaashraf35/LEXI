@@ -1,17 +1,15 @@
 # lexi/apps/contract_analysis/views.py
 import os
 import tempfile
+import requests
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework import status
+from django.conf import settings
 
 from .services.cloudinary_service import upload_contract
-from .services.extraction_service import extract_text
-from .services.clause_service import extract_clauses_with_llm, chunk_text
-from .services.analysis_service import predict_clause
-from .services.explanation_service import explain_clause_risk
 from .models import ContractAnalysis
 
 
@@ -48,71 +46,38 @@ class ContractAnalysisView(APIView):
             tmp_path = tmp.name
 
         try:
-            # Step 1: Upload to Cloudinary first
+            # Step 1: Upload to Cloudinary
             file_url = upload_contract(tmp_path, file.name)
 
-            # Step 2: Extract text from temp file
-            raw_text = extract_text(tmp_path)
-
-            # Step 3: Extract clauses via LLM
-            chunks = chunk_text(raw_text)
-            all_clauses = []
-            clause_counter = 1
-            for chunk in chunks:
-                extracted = extract_clauses_with_llm(chunk)
-                for c in extracted:
-                    all_clauses.append({
-                        'clause_id': clause_counter,
-                        'text': c.get('text', '').strip()
-                    })
-                    clause_counter += 1
-
-            # Step 4: Predict + explain each clause
-            analyzed = []
-            for c in all_clauses:
-                prediction = predict_clause(
-                    c['text'], contract_type, contract_subtype
+            # Step 2: Call FastAPI for AI analysis
+            with open(tmp_path, 'rb') as f:
+                ai_response = requests.post(
+                    f"{settings.AI_SERVICE_URL}/contract-analysis/analyze",
+                    files={'file': (file.name, f, file.content_type)},
+                    data={
+                        'contract_type': contract_type,
+                        'contract_subtype': contract_subtype
+                    },
+                    timeout=300
                 )
-                explanation = risk_level = recommendation = None
-                is_risky = prediction['risk'] == 1
 
-                if is_risky:
-                    parties = prediction['risk_parties'] if prediction['risk_parties'] else ['جميع الأطراف']
-                    llm_result     = explain_clause_risk(
-                        clause       = c['text'],
-                        parties      = parties,
-                        risk_type_ar = prediction['risk_type'],
-                        )
-                    explanation    = llm_result['explanation']
-                    risk_level     = llm_result['risk_level']
-                    recommendation = llm_result['recommendation']
-                else:
-                    parties = []
+            if ai_response.status_code != 200:
+                raise Exception(f"AI service error: {ai_response.text}")
 
-                analyzed.append({
-                    'clause_id':      c['clause_id'],
-                    'clause_text':    c['text'],
-                    'risk':           'نعم' if prediction['risk'] == 1 else 'لا',
-                    'risk_type':      prediction['risk_type'] if is_risky else None,
-                    'risk_parties':   parties,
-                    'explanation':    explanation,
-                    'risk_level':     risk_level,
-                    'recommendation': recommendation,
-                })
+            result = ai_response.json()
+            analyzed = result['contract_analysis']
+            summary  = result['summary']
 
-            total = len(analyzed)
-            risky = sum(1 for c in analyzed if c['risk'] == 'نعم')
-
-            # Step 5: Save to DB
+            # Step 3: Save to DB
             contract_analysis = ContractAnalysis.objects.create(
                 user             = request.user,
                 file_url         = file_url,
                 file_name        = file.name,
                 contract_type    = contract_type,
                 contract_subtype = contract_subtype,
-                total_clauses    = total,
-                risky_clauses    = risky,
-                safe_clauses     = total - risky,
+                total_clauses    = summary['total_clauses'],
+                risky_clauses    = summary['risky_clauses'],
+                safe_clauses     = summary['safe_clauses'],
                 result           = analyzed,
             )
 
@@ -126,12 +91,8 @@ class ContractAnalysisView(APIView):
                     'contract_type':     contract_type,
                     'contract_subtype':  contract_subtype,
                     'contract_analysis': analyzed,
-                    'summary': {
-                        'total_clauses': total,
-                        'risky_clauses': risky,
-                        'safe_clauses':  total - risky,
-                    },
-                    'created_at': contract_analysis.created_at,
+                    'summary':           summary,
+                    'created_at':        contract_analysis.created_at,
                 }
             }, status=status.HTTP_200_OK)
 

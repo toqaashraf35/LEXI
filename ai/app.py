@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from routers.chatbot import router as chatbot_router
+from routers.contract_analysis import router as contract_analysis_router
 
 app = FastAPI(
     title="LEXI AI",
@@ -7,3 +8,4 @@ app = FastAPI(
 )
 
 app.include_router(chatbot_router)
+app.include_router(contract_analysis_router)

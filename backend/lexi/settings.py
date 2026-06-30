@@ -29,7 +29,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'lexi.apps.users',
     'lexi.apps.contracts',
-    'lexi.apps.chatbot'
+    'lexi.apps.chatbot',
     'lexi.apps.training',
     'lexi.apps.contract_analysis',
 ]
