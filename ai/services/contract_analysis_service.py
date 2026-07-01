@@ -15,7 +15,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-MODELS_DIR = Path(__file__).resolve().parent.parent / 'contract_analysis' / 'arabic_legal_model'
+MODELS_DIR = Path(__file__).resolve().parent.parent / 'contract_analysis' / 'arabic_legal_final_model'
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
@@ -195,7 +195,10 @@ def predict_clause(clause, contract_type='عام', contract_subtype='عام'):
 # ── LLM explanation ───────────────────────────────────────────
 SYSTEM_PROMPT = (
     'أنت مساعد قانوني متخصص في تبسيط البنود التعاقدية العربية لغير المختصين. '
-    'اكتب بلغة عربية فصحى واضحة. '
+    'مهمتك الوحيدة هي تحليل بند تعاقدي معين بناءً فقط على نص البند والتصنيفات المعطاة. '
+    'لا تضف أي افتراضات قانونية غير مدعومة بالنص. '
+    'لا تستشهد بقوانين أو مواد قانونية محددة لم تُذكر في النص. '
+    'اكتب بلغة عربية فصحى واضحة ومفهومة لغير المتخصصين في القانون. '
     'أجب دائمًا بصيغة JSON صالحة فقط بدون أي نص إضافي.'
 )
 
@@ -207,12 +210,21 @@ def explain_clause_risk(clause, parties, risk_type_ar):
 الأطراف المتأثرة: {parties_str}
 نوع الخطر: {risk_type_ar}
 
-أرجع JSON بالشكل:
+أرجع تحليلك بصيغة JSON فقط بالشكل التالي بالضبط:
 {{
-  "explanation": "شرح موجز (2-4 جمل)",
-  "risk_level": "منخفض أو متوسط أو مرتفع",
-  "recommendation": "جملة أو جملتان للمستخدم قبل التوقيع"
+  "explanation": "شرح موجز (2-4 جمل) يوضح لماذا يُعتبر هذا البند خطرًا وما الآثار القانونية أو المالية أو التشغيلية المحتملة وأي طرف هو الأكثر تأثرًا",
+  "risk_level": "منخفض أو متوسط أو مرتفع فقط — اختر واحدة بناءً على مدى خطورة البند",
+  "recommendation": "جملة أو جملتان تخبر المستخدم بما يجب الانتباه له أو فعله قبل التوقيع"
 }}
+
+قواعد صارمة:
+- اعتمد فقط على نص البند والتصنيفات المذكورة.
+- لا تضف أي افتراضات أو مخاطر غير مذكورة أو غير مفهومة من النص.
+- إذا كان الخطر بسيطًا فاجعل risk_level = "منخفض".
+- إذا كان البند وصفيًا أو تنظيميًا فقط ولا يتضمن التزامًا أو مسؤولية أو أثرًا قانونيًا أو ماليًا أو تشغيليًا واضحًا، فاذكر في الشرح أنه بند وصفي أو تنظيمي فقط.
+- لا تحاول اختلاق مبررات لوجود خطر.
+- risk_level يجب أن يكون إحدى القيم: منخفض، متوسط، مرتفع فقط.
+- لا تضف أي نص خارج JSON.
 """
     response = client.chat.completions.create(
         model='llama-3.3-70b-versatile',
@@ -258,7 +270,7 @@ def analyze_contract(file_path, contract_type='عام', contract_subtype='عام
         is_risky = prediction['risk'] == 1
 
         if is_risky:
-            parties = prediction['risk_parties'] or ['جميع الأطراف']
+            parties = prediction["risk_parties"] if is_risky else []
             llm_result     = explain_clause_risk(c['text'], parties, prediction['risk_type'])
             explanation    = llm_result['explanation']
             risk_level     = llm_result['risk_level']
