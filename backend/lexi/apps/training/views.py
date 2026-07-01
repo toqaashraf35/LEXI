@@ -1,11 +1,13 @@
 import os
 import tempfile
+import requests
+from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework import status
-from .services.ai_service import run_full_analysis
+
 from .services.cloudinary_service import upload_video
 from .models import TrainingAnalysis
 from .serializers import TrainingAnalysisSerializer
@@ -25,13 +27,13 @@ class TrainingAnalysisView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         allowed_types = [
-        "video/mp4",
-        "video/quicktime",   # .mov
-        "video/x-msvideo",   # .avi
-        "video/x-matroska",  # .mkv
-        "video/x-ms-wmv",    # .wmv
-        "video/webm",        # .webm
-        "video/x-flv",       # .flv
+            "video/mp4",
+            "video/quicktime",
+            "video/x-msvideo",
+            "video/x-matroska",
+            "video/x-ms-wmv",
+            "video/webm",
+            "video/x-flv",
         ]
         if video_file.content_type not in allowed_types:
             return Response({
@@ -39,7 +41,6 @@ class TrainingAnalysisView(APIView):
                 "message": "نوع الملف غير صالح. يُسمح فقط بملفات الفيديو"
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Step 1: Save temporarily
         suffix = os.path.splitext(video_file.name)[1]
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             for chunk in video_file.chunks():
@@ -47,13 +48,23 @@ class TrainingAnalysisView(APIView):
             tmp_path = tmp.name
 
         try:
-            # Step 2: Upload to Cloudinary
+            # Step 1: Upload to Cloudinary
             video_url = upload_video(tmp_path)
 
-            # Step 3: Run AI analysis
-            results = run_full_analysis(tmp_path)
+            # Step 2: Call FastAPI for AI analysis
+            with open(tmp_path, 'rb') as f:
+                ai_response = requests.post(
+                    f"{settings.AI_SERVICE_URL}/training/analyze",
+                    files={'file': (video_file.name, f, video_file.content_type)},
+                    timeout=300
+                )
 
-            # Step 4: Save to DB
+            if ai_response.status_code != 200:
+                raise Exception(f"AI service error: {ai_response.text}")
+
+            results = ai_response.json()
+
+            # Step 3: Save to DB
             analysis = TrainingAnalysis.objects.create(
                 user=request.user,
                 video_url=video_url,
@@ -62,7 +73,6 @@ class TrainingAnalysisView(APIView):
                 report=results["report"]
             )
 
-            # Step 5: Return response
             return Response({
                 "status": "success",
                 "message": "تم تحليل الفيديو بنجاح",
@@ -103,7 +113,8 @@ class TrainingHistoryView(APIView):
             "count": analyses.count(),
             "data": serializer.data
         }, status=status.HTTP_200_OK)
-    
+
+
 class TrainingDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -122,7 +133,8 @@ class TrainingDetailView(APIView):
             "message": "تم جلب التحليل بنجاح",
             "data": serializer.data
         }, status=status.HTTP_200_OK)
-    
+
+
 class TrainingDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
