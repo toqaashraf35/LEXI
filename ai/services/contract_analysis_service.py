@@ -194,12 +194,14 @@ def predict_clause(clause, contract_type='عام', contract_subtype='عام'):
 
 # ── LLM explanation ───────────────────────────────────────────
 SYSTEM_PROMPT = (
-    'أنت مساعد قانوني متخصص في تبسيط البنود التعاقدية العربية لغير المختصين. '
-    'مهمتك الوحيدة هي تحليل بند تعاقدي معين بناءً فقط على نص البند والتصنيفات المعطاة. '
-    'لا تضف أي افتراضات قانونية غير مدعومة بالنص. '
-    'لا تستشهد بقوانين أو مواد قانونية محددة لم تُذكر في النص. '
-    'اكتب بلغة عربية فصحى واضحة ومفهومة لغير المتخصصين في القانون. '
-    'أجب دائمًا بصيغة JSON صالحة فقط بدون أي نص إضافي.'
+    "أنت مساعد قانوني متخصص في تبسيط البنود التعاقدية العربية لغير المختصين. "
+    "مهمتك الوحيدة هي تحليل بند تعاقدي معين اعتمادًا على نص البند فقط. "
+    "اعتبر نوع الخطر والأطراف المتأثرة معلومات مساعدة وليست حقائق مؤكدة. "
+    "إذا كان نص البند يوضح بوضوح أن الخطر أو الالتزام يقع على طرف معين، فاعتمد على نص البند في الشرح ولا تذكر أن جميع الأطراف متأثرة إذا لم يكن ذلك واضحًا من النص. "
+    "لا تضف أي افتراضات قانونية غير مدعومة بالنص. "
+    "لا تستشهد بقوانين أو مواد قانونية غير مذكورة في البند. "
+    "اكتب بلغة عربية فصحى واضحة ومفهومة لغير المختصين. "
+    "أجب دائمًا بصيغة JSON صالحة فقط بدون أي نص إضافي."
 )
 
 
@@ -209,6 +211,8 @@ def explain_clause_risk(clause, parties, risk_type_ar):
 البند التعاقدي: \"{clause}\"
 الأطراف المتأثرة: {parties_str}
 نوع الخطر: {risk_type_ar}
+إذا كانت قيمة "الأطراف المتأثرة" لا تتوافق مع نص البند، فاعتمد على نص البند عند كتابة الشرح.
+ولا تذكر أن جميع الأطراف متأثرة إلا إذا كان البند يفرض التزامًا أو أثرًا على جميع الأطراف بالفعل.
 
 أرجع تحليلك بصيغة JSON فقط بالشكل التالي بالضبط:
 {{
@@ -270,7 +274,7 @@ def analyze_contract(file_path, contract_type='عام', contract_subtype='عام
         is_risky = prediction['risk'] == 1
 
         if is_risky:
-            parties = prediction["risk_parties"] if is_risky else []
+            parties = prediction["risk_parties"]
             llm_result     = explain_clause_risk(c['text'], parties, prediction['risk_type'])
             explanation    = llm_result['explanation']
             risk_level     = llm_result['risk_level']
@@ -278,15 +282,25 @@ def analyze_contract(file_path, contract_type='عام', contract_subtype='عام
         else:
             parties = []
 
+
+        # Determine the final risk status based on the risk level.
+        # Only "Medium" and "High" risks are reported as risky.
+        is_significant = is_risky and risk_level in ['متوسط', 'مرتفع']
+        
+        final_explanation = (
+            explanation
+            if is_significant
+            else "لا يوجد خطر ملحوظ في هذا البند."
+        )
         analyzed.append({
             'clause_id':      c['clause_id'],
             'clause_text':    c['text'],
-            'risk':           'نعم' if is_risky else 'لا',
-            'risk_type':      prediction['risk_type'] if is_risky else None,
-            'risk_parties':   parties,
-            'explanation':    explanation,
-            'risk_level':     risk_level,
-            'recommendation': recommendation,
+            'risk':           'نعم' if is_significant else 'لا',
+            'risk_type':      prediction['risk_type'] if is_significant else None,
+            'risk_parties':   parties if is_significant else [],
+            'explanation':    final_explanation,
+            'risk_level':     risk_level if is_significant else None,
+            'recommendation': recommendation if is_significant else None,
         })
 
     total = len(analyzed)
