@@ -15,7 +15,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-MODELS_DIR = Path(__file__).resolve().parent.parent / 'contract_analysis' / 'arabic_legal_final_model'
+MODELS_DIR = Path(__file__).resolve().parent.parent / 'contract_analysis' / 'arabic_legal_model3'
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
