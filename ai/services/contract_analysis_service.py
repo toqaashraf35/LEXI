@@ -15,7 +15,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / '.env')
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-MODELS_DIR = Path(__file__).resolve().parent.parent / 'contract_analysis' / 'arabic_legal_model3'
+MODELS_DIR = Path(__file__).resolve().parent.parent / 'contract_analysis' / 'arabic_legal_model_4'
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 client = Groq(api_key=GROQ_API_KEY)
@@ -50,13 +50,18 @@ def _load_models():
 # ── Text extraction ───────────────────────────────────────────
 
 def normalize_arabic(text):
+    # ── Arabic normalization (improves ML prediction) ──────────
+    text = re.sub(r'[إأآا]', 'ا', text)
+    text = re.sub(r'ى', 'ي', text)
+    text = re.sub(r'ؤ', 'و', text)
+    text = re.sub(r'ئ', 'ي', text)
+    text = re.sub(r'ة', 'ه', text)
+    text = re.sub(r'[ًٌٍَُِّْـ]', '', text)
+    # ── OCR cleanup ────────────────────────────────────────────
     text = re.sub(r'[\u200e\u200f\u200b\u200c\u200d\ufeff]', '', text)
     text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
-    text = re.sub('[إأآ]', 'ا', text)
-    # Remove short isolated Latin-letter OCR garbage (1-4 letters surrounded by spaces)
     text = re.sub(r'(?<![A-Za-z])[A-Za-z]{1,4}(?![A-Za-z])', '', text)
-    # Clean up extra spaces left behind
-    text = re.sub(r'\s{2,}', ' ', text)
+    text = re.sub(r'\s+', ' ', text).strip()
     return text
 
 
@@ -163,23 +168,41 @@ def extract_clauses_with_llm(contract_text):
 # ── ML prediction ─────────────────────────────────────────────
 def predict_clause(clause, contract_type='عام', contract_subtype='عام'):
     _load_models()
-    full_text     = f'[{contract_type}] [{contract_subtype}] {clause}'
+    full_text     = f'[{contract_type}] [{contract_subtype}] {normalize_arabic(clause)}'
     X_transformed = _ridge_model.named_steps['tfidf'].transform([full_text])
     estimators    = _ridge_model.named_steps['clf'].estimators_
     y_columns     = list(_y.columns)
 
     raw_pred = []
+    party_scores = {}
+
     for i, col in enumerate(y_columns):
         if col == 'risk_type_label':
             raw_pred.append(estimators[i].predict(X_transformed)[0])
         else:
             score = estimators[i].decision_function(X_transformed)[0]
-            t     = _best_thresholds_ridge[col]
+            t     = _best_thresholds_ridge.get(col, 0.0)
             raw_pred.append(1 if score >= t else 0)
+            if col != 'risk':
+                party_scores[col] = score
 
     risk       = int(raw_pred[0])
     party_cols = list(_mlb.classes_)
-    parties    = [party_cols[i] for i, v in enumerate(raw_pred[1:1+len(party_cols)]) if v == 1]
+    parties_raw = [party_cols[i] for i, v in enumerate(raw_pred[1:1+len(party_cols)]) if v == 1]
+
+    if len(parties_raw) > 1:
+        scores_list = [party_scores[p] for p in parties_raw]
+        score_gap   = max(scores_list) - min(scores_list)
+        if score_gap < 0.15:
+            parties = ['جميع الأطراف']
+        else:
+            best_party = max(
+                {p: party_scores[p] for p in parties_raw},
+                key=lambda p: party_scores[p]
+            )
+            parties = [best_party]
+    else:
+        parties = parties_raw
 
     risk_type_idx = int(raw_pred[-1])
     risk_type_en  = _le_risk_type.classes_[risk_type_idx]
